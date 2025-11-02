@@ -1,36 +1,41 @@
-from flask import Flask
+from flask import Flask, Response
 import cv2
-import os
 
 app = Flask(__name__)
 
-@app.route("/")
-def analyze():
-    video_path = "sample_footage1.mp4"  # Make sure this file is in your repo
-    if not os.path.exists(video_path):
-        return "<h1>Error: Video file not found!</h1>"
+video_path = "sample_footage1.mp4"  # Your video file
 
+def generate_frames():
     cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        return "<h1>Error: Cannot open video file!</h1>"
-
     fgbg = cv2.createBackgroundSubtractorMOG2()
-    people_counts = []
 
     while True:
         ret, frame = cap.read()
         if not ret:
-            break
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Loop video
+            continue
+
         fgmask = fgbg.apply(frame)
         contours, _ = cv2.findContours(fgmask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         people_count = sum(1 for c in contours if cv2.contourArea(c) > 500)
-        people_counts.append(people_count)
 
-    cap.release()
+        # Draw count on frame
+        cv2.putText(frame, f"People: {people_count}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-    avg = sum(people_counts) / len(people_counts) if people_counts else 0
-    return f"<h1>Average People Detected: {avg:.2f}</h1>"
+        # Encode frame as JPEG
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
+
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+@app.route('/')
+def video_feed():
+    return Response(generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Use Render's PORT
-    app.run(host="0.0.0.0", port=port)
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)

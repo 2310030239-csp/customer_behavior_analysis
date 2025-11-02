@@ -1,11 +1,12 @@
 from flask import Flask
 import cv2
+import os
 
 app = Flask(__name__)
 
 @app.route("/")
 def analyze():
-    video_path = "sample_footage1.mp4"
+    video_path = "sample_footage1.mp4"  # Make sure this file is in your repo
     cap = cv2.VideoCapture(video_path)
     fgbg = cv2.createBackgroundSubtractorMOG2()
     people_counts = []
@@ -24,4 +25,5 @@ def analyze():
     return f"<h1>Average People Detected: {avg:.2f}</h1>"
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))  # Use Render's port
+    app.run(host="0.0.0.0", port=port)

@@ -7,6 +7,8 @@ cap = cv2.VideoCapture(video_path)
 # Initialize background subtractor
 fgbg = cv2.createBackgroundSubtractorMOG2()
 
+people_counts = []
+
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -21,19 +23,12 @@ while True:
     people_count = 0
     for cnt in contours:
         if cv2.contourArea(cnt) > 500:  # filter small noise
-            x, y, w, h = cv2.boundingRect(cnt)
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
             people_count += 1
 
-    # Show people count
-    cv2.putText(frame, f"People Detected: {people_count}", (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
-
-    cv2.imshow("Customer Behavior Analysis", frame)
-
-    # Press 'q' to exit
-    if cv2.waitKey(30) & 0xFF == ord('q'):
-        break
+    people_counts.append(people_count)
 
 cap.release()
-cv2.destroyAllWindows()
+
+# Print summary result (you can also log or save this)
+average_count = sum(people_counts) / len(people_counts) if people_counts else 0
+print(f"Average People Detected: {average_count:.2f}")
